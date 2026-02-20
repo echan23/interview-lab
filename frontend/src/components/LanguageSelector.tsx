@@ -38,6 +38,10 @@ const languageOptions = [
     value: "javascript",
     label: "Javascript",
   },
+  {
+    value: "go",
+    label: "Go",
+  },
 ];
 
 const LanguageSelector = ({
