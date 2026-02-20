@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 
+.docker-compose.yaml
+
 #Secrets
 .env
 

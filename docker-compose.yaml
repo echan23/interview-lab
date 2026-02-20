@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # Go Backend
+  go-backend:
+    build:
+      context: ./go-backend
+      dockerfile: Dockerfile
+    container_name: interviewlab
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./go-backend/.env
+
+  # Piston Code Execution API
+  piston:
+    image: ghcr.io/engineer-man/piston
+    container_name: piston_api
+    restart: always
+    privileged: true
+    ports:
+      - "2000:2000"
+    volumes:
+      - piston-packages:/piston/packages
+    tmpfs:
+      - /tmp:exec
+
+volumes:
+  piston-packages:
