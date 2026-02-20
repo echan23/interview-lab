@@ -1,9 +1,8 @@
 import axios from "axios";
 import LANGUAGE_VERSIONS from "../data/LANGUAGE_VERSIONS.json";
 
-const pistonDomain = import.meta.env.VITE_PISTON_URL;
 const API = axios.create({
-  baseURL: `http://${pistonDomain}/api/v2`,
+  baseURL: import.meta.env.VITE_PISTON_URL
 });
 
 export const executeCode = async (language: string, sourceCode: string) => {
