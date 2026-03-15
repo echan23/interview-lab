@@ -34,11 +34,11 @@ func Init() {
 var ErrRoomNotFound = errors.New("Room not found in Postgres")
 
 func SaveToDB(ctx context.Context, roomID string, content string, editTime time.Time) error {
-	query := `INSERT INTO codefiles(roomID, content, lastEdited)
+	query := `INSERT INTO codefiles(roomID, content, last_edited)
 				VALUES($1, $2, $3)
 				ON CONFLICT (roomID) DO UPDATE
 				SET content = EXCLUDED.content,
-					lastEdited = EXCLUDED.lastEdited;`
+					last_edited = EXCLUDED.last_edited;`
 	_, err := DB.Exec(ctx, query, roomID, content, editTime)
 	return err
 }
