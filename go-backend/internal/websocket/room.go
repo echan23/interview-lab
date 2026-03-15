@@ -3,10 +3,10 @@ package websocket
 import (
 	"context"
 	"fmt"
-	"interviewlab-backend/config"
+	"interviewlab-backend/internal/config"
+	"interviewlab-backend/internal/postgres"
 	"interviewlab-backend/internal/redis"
 	"interviewlab-backend/internal/types"
-	"interviewlab-backend/postgres"
 	"log"
 	"sort"
 	"sync"
@@ -183,6 +183,11 @@ func (r *Room) startDBWriteRoutine(){
 	for{
 		select{
 			case <- r.Ctx.Done():
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := postgres.SaveToDB(ctx, r.Id, r.content, time.Now()); err != nil {
+					log.Println("Error flushing to db on shutdown:", r.Id, err)
+				}
 				return
 			case <- ticker.C:
 				err := postgres.SaveToDB(r.Ctx, r.Id, r.content, time.Now())

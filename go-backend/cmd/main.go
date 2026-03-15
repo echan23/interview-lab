@@ -1,10 +1,10 @@
 package main
 
 import (
-	"interviewlab-backend/config"
+	"interviewlab-backend/internal/config"
+	"interviewlab-backend/internal/postgres"
 	"interviewlab-backend/internal/redis"
 	"interviewlab-backend/internal/websocket"
-	"interviewlab-backend/postgres"
 	"log"
 	"os"
 
@@ -24,9 +24,8 @@ func main() {
 	  }))
 
 
-	/*ROOMS LOGIC =================================================================================
+	/*ROOMS LOGIC*/
 
-	==============================================================================================*/
 	websocket.MainManager = websocket.NewManager()
 	config.Init() //Sets the serverID
 	postgres.Init() //starts postgres connection
@@ -71,8 +70,12 @@ func main() {
 
 
 	r.GET("/healthz", func(c *gin.Context) {
+		if err := redis.Client.Ping(c.Request.Context()).Err(); err != nil {
+			c.JSON(500, gin.H{"status": "redis error", "error": err.Error()})
+			return
+		}
 		c.JSON(200, gin.H{"status": "ok"})
-	  })
+	})
 
 
 
