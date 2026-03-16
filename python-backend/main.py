@@ -24,7 +24,12 @@ def get_next_client():
     return next(openai_clients)
     
 app = FastAPI()
-handler = Mangum(app)
+_mangum = Mangum(app, lifespan="off")
+
+def handler(event, context):
+    print("EVENT_TYPE:", type(event).__name__)
+    print("EVENT_KEYS:", list(event.keys()) if isinstance(event, dict) else str(event)[:500])
+    return _mangum(event, context)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[FRONTEND_URL],
@@ -66,13 +71,13 @@ async def get_gpt_response(code: str, hint_type: str) -> str:
         client = get_next_client()
         try:
             response = client.chat.completions.create(
-                model="openai/gpt-4o",
+                model="openai/gpt-4.1",
                 messages=[
-                    {"role": "system", "content": "You are a helpful interviewer during a technical Software Engineering interview."},
+                    {"role": "system", "content": "You are a concise, supportive coding tutor. Speak directly to the student. Be brief and clear — no filler, no greetings."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=500,
-                temperature=0.7,
+                max_tokens=1000 if hint_type == "strong" else 500,
+                temperature=0.5 if hint_type == "strong" else 0.7,
             )
             return response.choices[0].message.content.strip()
 
@@ -80,7 +85,7 @@ async def get_gpt_response(code: str, hint_type: str) -> str:
             logging.warning("Rate limit hit. Trying next API key...")
             time.sleep(0.5)  # small delay before retry
         except Exception as e:
-            logging.error(f"[{i}] Unexpected error with API key: {e}", exc_info=True)
+            logging.error(f"Unexpected error with API key: {e}", exc_info=True)
             time.sleep(0.5)
 
     raise RuntimeError("All API keys exhausted or rate-limited.")
@@ -92,7 +97,7 @@ async def generate_question(difficulty: str, company: str, topic: str) -> str:
         client = get_next_client()
         try:
             response = client.chat.completions.create(
-                model="openai/gpt-4o",
+                model="openai/gpt-4.1",
                 messages=[
                     {
                         "role": "system",
@@ -133,8 +138,14 @@ async def generate_question(difficulty: str, company: str, topic: str) -> str:
 async def hint_handler(req: HintRequest):
     global_rate_limiter()
     try:
-        hint = await get_gpt_response(req.code, req.hintType)
-        return {"hint": hint}
+        raw = await get_gpt_response(req.code, req.hintType)
+        if req.hintType == "strong":
+            hints = [h.strip() for h in raw.split("|||") if h.strip()]
+            if len(hints) != 4:
+                hints = [raw]
+            return {"hints": hints}
+        else:
+            return {"hint": raw}
     except Exception as e:
         logging.error(f"Generation failed: {e}", exc_info=True)
         return {"error": str(e)}

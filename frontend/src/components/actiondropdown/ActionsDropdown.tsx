@@ -21,9 +21,11 @@ type ActionsDropdownProps = {
   editorRef: React.MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>;
   popoverSide?: "top" | "right" | "bottom" | "left";
   compact?: boolean;
+  wrapperClassName?: string;
+  label?: string;
 };
 
-export default function ActionsDropdown({ editorRef, popoverSide = "right", compact = false }: ActionsDropdownProps) {
+export default function ActionsDropdown({ editorRef, popoverSide = "right", compact = false, wrapperClassName, label }: ActionsDropdownProps) {
   const [open, setOpen] = React.useState(false);
   const [difficulty, setDifficulty] = React.useState("easy");
   const [company, setCompany] = React.useState(" ");
@@ -86,21 +88,25 @@ export default function ActionsDropdown({ editorRef, popoverSide = "right", comp
   };
 
   return (
-    <div>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            size="icon"
-            variant="ghost"
-            className={`relative ${compact ? "h-7 w-7" : "h-10 w-10"} rounded-lg transition-all duration-150 hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 ${
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div className={wrapperClassName ?? ""}>
+          <div
+            className={`${compact ? "h-7 w-7" : "h-10 w-10"} flex items-center justify-center ${
               theme === "dark"
                 ? "text-purple-300"
-                : `${open ? "text-purple-500" : "text-[#6e7681] hover:text-purple-500"}`
+                : `${open ? "text-purple-500" : "text-[#6e7681] group-hover:text-purple-500"}`
             }`}
           >
             <Sparkles className={`${compact ? "h-4 w-4" : "h-6 w-6"} transition-all duration-150`} />
-          </Button>
-        </PopoverTrigger>
+          </div>
+          {label && (
+            <span className={`text-[9px] font-medium leading-none mt-0.5 ${
+              theme === "dark" ? "text-[#ccc]" : "text-[#aaa]"
+            }`}>{label}</span>
+          )}
+        </div>
+      </PopoverTrigger>
         <PopoverContent
           side={popoverSide}
           align="start"
@@ -144,8 +150,6 @@ export default function ActionsDropdown({ editorRef, popoverSide = "right", comp
 
           </div>
         </PopoverContent>
-      </Popover>
-
-    </div>
+    </Popover>
   );
 }

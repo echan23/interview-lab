@@ -2,8 +2,9 @@ service: gpt-fastapi-backend
 
 provider:
   name: aws
-  runtime: python3.9
+  runtime: python3.12
   region: us-east-1
+  architecture: arm64
 
 functions:
   api:
@@ -25,4 +26,5 @@ plugins:
 custom:
   pythonRequirements:
     dockerizePip: true
+    dockerImage: public.ecr.aws/sam/build-python3.12:latest
     slim: true

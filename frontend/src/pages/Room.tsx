@@ -1,6 +1,8 @@
 import { useEffect, useCallback } from "react";
 import CodeEditor from "../components/CodeEditor.tsx";
 import Output from "../components/Output.tsx";
+import HintTerminal from "../components/HintTerminal.tsx";
+import type { Hint } from "../components/HintTerminal.tsx";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 import Sidebar from "../components/Sidebar.tsx";
@@ -63,6 +65,19 @@ const RoomContent = () => {
   const [dragPreviewEdge, setDragPreviewEdge] = useState<SidebarPosition | null>(null);
   const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
 
+  // Hint panel state
+  const [hints, setHints] = useState<Hint[]>([]);
+  const [isHintPanelVisible, setIsHintPanelVisible] = useState(false);
+
+  const handleHintReceived = useCallback((hint: Hint) => {
+    setHints([hint]);
+    setIsHintPanelVisible(true);
+  }, []);
+
+  const handleHintPanelClose = useCallback(() => {
+    setIsHintPanelVisible(false);
+  }, []);
+
   // Resize handle, layout toggle, collapsible output
   const [isResizing, setIsResizing] = useState(false);
   const [panelLayout, setPanelLayout] = useState<PanelLayout>(getInitialLayout);
@@ -86,11 +101,6 @@ const RoomContent = () => {
       panel.collapse();
     }
   }, [isOutputCollapsed]);
-
-  const handlePositionChange = useCallback((pos: SidebarPosition) => {
-    setSidebarPosition(pos);
-    localStorage.setItem(STORAGE_KEY, pos);
-  }, []);
 
   // Mouse-based drag handlers (passed to Sidebar)
   const handleDragStart = useCallback((e: React.MouseEvent) => {
@@ -254,8 +264,8 @@ const RoomContent = () => {
         <Sidebar
           editorRef={editorRef}
           position={sidebarPosition}
-          onPositionChange={handlePositionChange}
           onDragStart={handleDragStart}
+          onHintReceived={handleHintReceived}
         />
       </div>
 
@@ -265,7 +275,7 @@ const RoomContent = () => {
         }`}
       >
         <PanelGroup direction={panelLayout} key={panelLayout}>
-          <Panel defaultSize={70} minSize={20}>
+          <Panel defaultSize={isHintPanelVisible ? 50 : 70} minSize={20}>
             <div className="flex h-full overflow-auto">
               <CodeEditor
                 editorRef={editorRef}
@@ -346,7 +356,7 @@ const RoomContent = () => {
           </PanelResizeHandle>
           <Panel
             ref={outputPanelRef}
-            defaultSize={30}
+            defaultSize={isHintPanelVisible ? 25 : 30}
             minSize={10}
             collapsible={true}
             collapsedSize={0}
@@ -362,6 +372,52 @@ const RoomContent = () => {
               />
             </div>
           </Panel>
+          {isHintPanelVisible && (
+            <>
+              <PanelResizeHandle
+                className={`group relative flex items-center justify-center ${
+                  panelLayout === "horizontal"
+                    ? "w-3 cursor-col-resize"
+                    : "h-3 cursor-row-resize"
+                }`}
+              >
+                <div
+                  className={`${
+                    panelLayout === "horizontal" ? "w-[2px] h-full" : "h-[2px] w-full"
+                  } transition-colors duration-150 ${
+                    theme === "dark"
+                      ? "bg-[#282828] group-hover:bg-[#007acc]"
+                      : "bg-[#ebebeb] group-hover:bg-[#007acc]"
+                  }`}
+                />
+                <div
+                  className={`absolute flex ${
+                    panelLayout === "horizontal" ? "flex-col" : "flex-row"
+                  } gap-[3px] opacity-0 group-hover:opacity-100 transition-opacity duration-150`}
+                >
+                  {[...Array(5)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-1 h-1 rounded-full ${
+                        theme === "dark" ? "bg-[#555]" : "bg-[#bbb]"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </PanelResizeHandle>
+              <Panel
+                defaultSize={25}
+                minSize={10}
+                collapsible={true}
+                collapsedSize={0}
+                onCollapse={() => setIsHintPanelVisible(false)}
+              >
+                <div className="h-full overflow-auto flex flex-col">
+                  <HintTerminal hints={hints} onClose={handleHintPanelClose} />
+                </div>
+              </Panel>
+            </>
+          )}
         </PanelGroup>
       </div>
     </div>
