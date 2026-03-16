@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { LogOut, GripVertical, GripHorizontal, Sun, Moon } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -44,7 +43,6 @@ export default function Sidebar({ editorRef, position, onDragStart, onHintReceiv
   const GripIcon = isVertical ? GripVertical : GripHorizontal;
 
   const iconSize = isVertical ? "h-10 w-10" : "h-7 w-7";
-  const iconBtn = `${iconSize} rounded-lg transition-all duration-150 focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-transparent`;
 
   const asideClasses = isVertical
     ? `flex flex-col items-center w-[64px] shrink-0 py-3 gap-3 h-full`
