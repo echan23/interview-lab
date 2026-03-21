@@ -4,6 +4,10 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        display: ["Satoshi", "system-ui", "sans-serif"],
+        body: ["General Sans", "system-ui", "sans-serif"],
+      },
       borderRadius: {
         lg: "0.5rem",
         xl: "0.75rem",
@@ -30,13 +34,16 @@ export default {
             backgroundPosition: "350% 50%, 350% 50%",
           },
         },
+        shimmer: {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
       },
       animation: {
         fadeIn: "fadeIn 0.5s ease-in-out",
         aurora: "aurora 60s linear infinite",
-      },
-      animation: {
         "spin-slow": "spin 2s linear infinite",
+        shimmer: "shimmer 8s ease-in-out infinite",
       },
     },
   },

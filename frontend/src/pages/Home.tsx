@@ -2,124 +2,103 @@
 import CreateRoomButton from "@/components/homepage/CreateRoomButton";
 import Footer from "@/components/homepage/Footer";
 import Features from "@/components/homepage/Features";
-import axios from "axios";
 import { useState, useEffect } from "react";
 
-const domainName = import.meta.env.VITE_DOMAIN_NAME as string;
-
-async function getRoomsAllTime() {
-  const apiUrl = `${domainName}/api/roomsAllTime`;
-  try {
-    const response = await axios.get(apiUrl);
-    return response.data.value;
-  } catch (error) {
-    console.log("Failed to retrieve rooms All Time");
-    return null;
-  }
-}
-
 export default function Home() {
-  const [roomsAllTime, setRoomsAllTime] = useState(999);
   const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
-    getRoomsAllTime().then((value) => {
-      if (value) {
-        setRoomsAllTime(value);
-      }
-    });
-
     const timeout = setTimeout(() => setShowContent(true), 100);
     return () => clearTimeout(timeout);
   }, []);
 
   return (
-    <div className="relative min-h-screen text-white overflow-hidden flex flex-col bg-black">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/8 via-transparent to-white/4"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.06)_0%,_transparent_50%)]"></div>
-        <div className="absolute w-96 h-96 -top-48 -left-48 bg-white/5 rounded-full blur-3xl animate-pulse"></div>
-        <div
-          className="absolute w-80 h-80 -bottom-40 -right-40 bg-white/4 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "2s" }}
-        ></div>
-        <div
-          className="absolute w-64 h-64 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/3 rounded-full blur-3xl animate-bounce"
-          style={{ animationDuration: "8s" }}
-        ></div>
+    <div className="relative min-h-screen text-white overflow-hidden flex flex-col bg-[#0a0a0a]">
+      {/* Subtle grain texture overlay */}
+      <div
+        className="pointer-events-none fixed inset-0 z-50 opacity-[0.015]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+        }}
+      />
+
+      {/* Refined gradient background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-b from-neutral-900/50 via-transparent to-neutral-900/30" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b from-white/[0.03] to-transparent rounded-full blur-3xl" />
       </div>
 
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/5 to-transparent"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.1)_0%,_transparent_70%)]"></div>
-      </div>
-
-      <div className="flex justify-between items-center px-6 md:px-12 py-6 z-10 relative backdrop-blur-sm">
-        <div className="flex items-center gap-3">
+      {/* Header */}
+      <header className="relative z-10 flex justify-between items-center px-8 md:px-16 lg:px-24 py-8">
+        <div className="flex items-center gap-4">
           <div className="relative">
             <img
               src="/interviewlablogo.svg"
               alt="InterviewLab Logo"
-              className="h-10 w-10 md:h-12 md:w-12 brightness-0 invert"
+              className="h-9 w-9 brightness-0 invert opacity-90"
             />
-            <div className="absolute inset-0 bg-white rounded-full opacity-20 blur-sm"></div>
           </div>
-          <span className="text-xl md:text-2xl font-bold tracking-tight text-white">
-            Interview Lab
+          <span className="font-display text-xl font-bold tracking-tight text-white/90">
+            InterviewLab
           </span>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-3 px-5 py-2 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10 shadow-inner">
-            <span className="text-sm font-medium text-white/75 tracking-tight">
-              {roomsAllTime} labs created
+        <div className="flex items-center">
+          <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/[0.06]">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/80 animate-pulse" />
+            <span className="font-body text-sm text-white/50 tracking-wide">
+              4,249 labs created
             </span>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="flex-1 z-10 relative flex items-center justify-center px-4">
-        <div className="relative flex flex-col gap-8 items-center justify-center text-center max-w-4xl mx-auto">
+      {/* Hero Section */}
+      <main className="flex-1 z-10 relative flex items-center justify-center px-8 md:px-16 lg:px-24 py-12">
+        <div className="relative flex flex-col gap-10 items-center justify-center text-center max-w-4xl mx-auto">
+          {/* Main headline */}
           <div
-            className={`text-5xl md:text-7xl font-bold leading-tight transition-all duration-700 ${
+            className={`transform transition-all duration-700 ${
               showContent
                 ? "opacity-100 translate-y-0"
                 : "opacity-0 translate-y-4"
             }`}
           >
-            <h1>
+            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.95]">
               <span className="block text-white">Practice smarter.</span>
-              <span className="block text-gray-300">Interview better.</span>
+              <span className="block text-white/40 mt-2">Interview better.</span>
             </h1>
           </div>
 
+          {/* Subheadline */}
           <p
-            className={`text-xl md:text-2xl text-gray-400 max-w-2xl leading-relaxed transform transition-all duration-700 ${
+            className={`font-body text-lg md:text-xl text-white/35 max-w-xl leading-relaxed tracking-wide transform transition-all duration-700 delay-150 ${
               showContent
                 ? "opacity-100 translate-y-0"
                 : "opacity-0 translate-y-4"
             }`}
           >
-            Mock interview with real-time compilation, AI feedback, and live
-            collaboration — all in your browser.
+            Real-time code execution, AI-powered feedback, and live collaboration.
+            All in your browser.
           </p>
 
+          {/* CTA */}
           <div
-            className={`mt-4 transform transition-all duration-700 delay-200 ${
-              showContent ? "opacity-100 scale-100" : "opacity-0 scale-90"
+            className={`mt-4 transform transition-all duration-700 delay-300 ${
+              showContent ? "opacity-100 scale-100" : "opacity-0 scale-95"
             }`}
           >
             <CreateRoomButton />
           </div>
-
-          <div className="flex items-center gap-8 mt-8 text-sm text-gray-500"></div>
         </div>
-      </div>
+      </main>
 
-      <div className="w-full z-10 relative mt-16 mb-8">
+      {/* Features Section */}
+      <div className="w-full z-10 relative">
         <Features />
       </div>
 
+      {/* Footer */}
       <div className="w-full z-10 relative mt-auto">
         <Footer />
       </div>

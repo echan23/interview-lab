@@ -116,7 +116,19 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: "General Sans", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+}
+
+/* Homepage specific styles */
+.font-display {
+  font-family: "Satoshi", system-ui, sans-serif;
+}
+
+.font-body {
+  font-family: "General Sans", system-ui, sans-serif;
 }
 
 .monaco-editor .decorationsOverviewRuler {
