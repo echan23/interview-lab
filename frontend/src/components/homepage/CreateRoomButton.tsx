@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import ReCAPTCHA from "react-google-recaptcha";
-import { PlusCircleIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
+import { ArrowRight } from "lucide-react";
 
 const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string;
 const domainName = import.meta.env.VITE_DOMAIN_NAME as string;
@@ -36,30 +36,36 @@ const CreateRoomButton = () => {
       <Button
         onClick={handleCreateRoom}
         disabled={loading}
-        className={`
-          flex items-center justify-center space-x-3
-          h-16 px-8 md:px-12
+        className="
+          group relative
+          flex items-center justify-center gap-3
+          h-14 px-8
           bg-white text-black
-          border-2 border-black
-          rounded-lg shadow-sm
-          transition-all duration-200
-          hover:bg-black hover:text-white hover:-translate-y-1 hover:shadow-lg hover:border-gray-300
-          group
-          disabled:opacity-50 disabled:cursor-not-allowed
-        `}
+          font-display font-semibold text-base
+          rounded-full
+          border-0
+          shadow-[0_0_0_1px_rgba(255,255,255,0.1),0_2px_8px_rgba(0,0,0,0.2)]
+          transition-all duration-300 ease-out
+          hover:bg-white hover:shadow-[0_0_0_1px_rgba(255,255,255,0.2),0_8px_32px_rgba(255,255,255,0.1)]
+          hover:scale-[1.02]
+          active:scale-[0.98]
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
+        "
       >
-        <PlusCircleIcon className="h-6 w-6" />
-
-        <span className="font-semibold text-lg">
-          {loading ? "Creating…" : "Create Lab"}
-        </span>
-
-        <ArrowRightIcon className="h-5 w-5 transform transition-transform group-hover:translate-x-1" />
+        <span>{loading ? "Creating..." : "Create Lab"}</span>
+        <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />
       </Button>
 
-      <div className="h-[88px] w-full flex justify-center">
-        <div style={{ visibility: captchaVisible ? "visible" : "hidden" }}>
-          <ReCAPTCHA sitekey={siteKey} onChange={handleCaptchaChange} />
+      <div className="h-[78px] w-full flex justify-center">
+        <div
+          className="transition-all duration-300"
+          style={{
+            opacity: captchaVisible ? 1 : 0,
+            visibility: captchaVisible ? "visible" : "hidden",
+            transform: captchaVisible ? "translateY(0)" : "translateY(-8px)",
+          }}
+        >
+          <ReCAPTCHA sitekey={siteKey} onChange={handleCaptchaChange} theme="dark" />
         </div>
       </div>
     </div>
