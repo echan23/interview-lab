@@ -3,6 +3,10 @@ name: Deploy to EC2
 on:
   push:
     branches: [main]
+    paths:
+      - 'go-backend/**'
+      - 'docker-compose.yaml'
+      - '.github/workflows/deploy.yml'
 
 jobs:
   deploy:
