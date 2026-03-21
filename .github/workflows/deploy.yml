@@ -21,6 +21,13 @@ jobs:
             fi
             cd ~/interviewlab
             git pull origin main
+
+            # Copy .env into the expected location
+            cp ~/go-backend/.env ~/interviewlab/go-backend/.env
+
+            # Build and deploy only the go-backend
             cd go-backend
-            docker-compose build
-            docker-compose up -d
+            docker build -t interviewlab-go-backend .
+            docker stop interviewlab || true
+            docker rm interviewlab || true
+            docker run -d --name interviewlab --restart always --env-file .env -p 8080:8080 interviewlab-go-backend
