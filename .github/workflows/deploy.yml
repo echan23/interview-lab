@@ -26,8 +26,8 @@ jobs:
             cd ~/interviewlab
             git pull origin main
 
-            # Copy .env into the expected location
-            cp ~/go-backend/.env ~/interviewlab/go-backend/.env
+            # Copy .env from safe backup location
+            cp ~/env-backup/.env ~/interviewlab/go-backend/.env
 
             # Build and deploy only the go-backend
             cd go-backend
