@@ -16,9 +16,11 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             if [ ! -d ~/interviewlab/.git ]; then
+              rm -rf ~/interviewlab
               git clone https://github.com/echan23/interviewlab.git ~/interviewlab
             fi
             cd ~/interviewlab
             git pull origin main
             cd go-backend
-            docker-compose up --build -d
+            docker-compose build
+            docker-compose up -d
