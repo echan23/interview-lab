@@ -10,7 +10,7 @@ export function RedirectHome() {
       variant="ghost"
       onClick={() => navigate("/")}
       className={`
-        h-12 w-12 rounded-lg
+        h-12 w-12 rounded
         bg-transparent text-inherit shadow-none ring-0
 
         /* Override all hover/focus/active from the variant */

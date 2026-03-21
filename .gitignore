@@ -3,6 +3,7 @@ backend/.env
 .env
 .env
 /backend/.env
+/Users/edchan/projects/interviewlab/python-backend/.serverless/gpt-fastapi-backend.zip
 
 # ignoring virtual envs
 /venv/

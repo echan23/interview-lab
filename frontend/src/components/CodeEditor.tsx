@@ -4,19 +4,21 @@ import * as monaco from "monaco-editor";
 import Editor from "@monaco-editor/react";
 import { editor as MonacoEditor } from "monaco-editor";
 import LanguageSelector from "./LanguageSelector";
-import ThemeToggle from "./ThemeToggle";
+import UserCount from "./UserCount";
 import { useTheme } from "@/components/ThemeProvider";
 
 type CodeEditorProps = {
   editorRef: React.MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>;
   onSelectedLanguage: (value: string) => void;
   setEditorMounted: (value: boolean) => void;
+  userCount: number;
 };
 
 const CodeEditor = ({
   editorRef,
   onSelectedLanguage,
   setEditorMounted,
+  userCount,
 }: CodeEditorProps) => {
   const [currentLanguage, setCurrentLanguage] = useState("python");
   const { theme } = useTheme();
@@ -47,23 +49,23 @@ const CodeEditor = ({
 
   return (
     <div
-      className={`editor-container h-full w-full ${
+      className={`editor-container h-full w-full flex flex-col ${
         theme === "dark" ? "bg-[#1e1e1e]" : "bg-white"
       }`}
     >
       <div
-        className={`mb-2 flex justify-between items-center ${
-          theme === "dark" ? "bg-[#252526]" : "bg-[#f8f8f8]"
+        className={`px-3 py-2 flex justify-between items-center shrink-0 ${
+          theme === "dark" ? "bg-[#1e1e1e]" : "bg-white"
         }`}
       >
         <LanguageSelector onSelect={handleSelectLanguage} />
         <div className="flex items-center gap-2">
-          <ThemeToggle />
+          <UserCount count={userCount} />
         </div>
       </div>
-      <div>
+      <div className="flex-1 min-h-0">
         <Editor
-          height="calc(84vh - 1rem)"
+          height="100%"
           width="100%"
           defaultLanguage="python"
           language={currentLanguage}
