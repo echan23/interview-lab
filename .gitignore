@@ -1,9 +1,21 @@
-# ignoring env files
-backend/.env
-.env
-.env
-/backend/.env
-/Users/edchan/projects/interviewlab/python-backend/.serverless/gpt-fastapi-backend.zip
+# Dependencies
+node_modules/
 
-# ignoring virtual envs
+# Env / secrets
+.env
+backend/.env
+/backend/.env
+
+# Build artifacts
+go-backend/tmp/
+/tmp/
+dist/
+.serverless/
+*.zip
+
+# Python
 /venv/
+__pycache__/
+
+# Tooling
+.claude
