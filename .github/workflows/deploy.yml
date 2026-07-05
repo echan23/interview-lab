@@ -18,6 +18,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 20m
           script: |
             if [ ! -d ~/interviewlab/.git ]; then
               rm -rf ~/interviewlab
@@ -43,3 +44,20 @@ jobs:
 
             # Build and deploy the full stack (go-backend + piston)
             docker compose up -d --build
+
+            # Install Piston runtimes if missing (no-op when already installed)
+            echo "Waiting for Piston API..."
+            for i in $(seq 1 60); do
+              curl -s -m 3 http://localhost:2000/api/v2/runtimes >/dev/null && break
+              sleep 2
+            done
+            installed=$(curl -s http://localhost:2000/api/v2/runtimes)
+            echo "Installed runtimes: $installed"
+            for pkg in "python 3.12.0" "node 20.11.1" "java 15.0.2" "gcc 10.2.0" "go 1.16.2"; do
+              set -- $pkg
+              if ! echo "$installed" | grep -q "\"language\":\"$1\",\"version\":\"$2\""; then
+                echo "Installing $1 $2..."
+                curl -s -X POST http://localhost:2000/api/v2/packages -H 'Content-Type: application/json' -d "{\"language\":\"$1\",\"version\":\"$2\"}"
+                echo
+              fi
+            done
