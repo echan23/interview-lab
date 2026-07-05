@@ -23,3 +23,15 @@ type RedisEnvelope struct {
 	Origin string
 	Edits  []Edit
 }
+
+type StopwatchEvent struct {
+	EventTime int64  `json:"eventTime"`
+	EventType string `json:"eventType"`
+	Origin    string `json:"origin"`
+}
+
+type StopwatchState struct {
+	StartTime   int64 `json:"startTime"`
+	Running     bool  `json:"running"`
+	ElapsedTime int64 `json:"elapsedTime"`
+}

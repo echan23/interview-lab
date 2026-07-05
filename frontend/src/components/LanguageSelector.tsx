@@ -64,15 +64,15 @@ const LanguageSelector = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-[200px] justify-between transition-all duration-200 hover:shadow-lg hover:border-primary/50 group"
+          className="h-8 w-[160px] justify-between px-2.5 text-[13px] font-medium transition-all duration-200 hover:shadow-lg group"
         >
           {value
             ? languageOptions.find((lang) => lang.value === value)?.label
             : "Select language..."}
-          <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50 group-hover:opacity-70 group-hover:rotate-180 transition-all duration-200" />
+          <ChevronsUpDownIcon className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50 group-hover:opacity-70 group-hover:rotate-180 transition-all duration-200" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
+      <PopoverContent align="start" className="w-[220px] p-0">
         <Command>
           <CommandInput placeholder="Search language..." />
           <CommandList>

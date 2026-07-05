@@ -60,7 +60,20 @@ func (c *Client) readPump() {
 			log.Println("Error reading message: ", err)
 			return
 		}
-		//log.Println("websocket received input: ", payload)
+		// Object payloads are control messages (e.g. stopwatch); arrays are editor diffs
+		if len(payload) > 0 && payload[0] == '{' {
+			var event struct {
+				Type      string `json:"type"`
+				EventType string `json:"eventType"`
+				EventTime int64  `json:"eventTime"`
+			}
+			if err := json.Unmarshal(payload, &event); err == nil && event.Type == "stopwatch" {
+				c.room.stopwatchCh <- types.StopwatchEvent{EventType: event.EventType, EventTime: event.EventTime}
+				continue
+			}
+			log.Println("Unrecognized control message:", string(payload))
+			continue
+		}
 		var edits []types.Edit
 		if err := json.Unmarshal(payload, &edits); err != nil{
 			log.Println("Error:", err)

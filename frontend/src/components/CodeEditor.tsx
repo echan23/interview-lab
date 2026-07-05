@@ -5,13 +5,16 @@ import Editor from "@monaco-editor/react";
 import { editor as MonacoEditor } from "monaco-editor";
 import LanguageSelector from "./LanguageSelector";
 import UserCount from "./UserCount";
+import Stopwatch from "./Stopwatch";
 import { useTheme } from "@/components/ThemeProvider";
+import type { StopwatchState } from "../api/websocket";
 
 type CodeEditorProps = {
   editorRef: React.MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>;
   onSelectedLanguage: (value: string) => void;
   setEditorMounted: (value: boolean) => void;
   userCount: number;
+  stopwatchState: StopwatchState;
 };
 
 const CodeEditor = ({
@@ -19,6 +22,7 @@ const CodeEditor = ({
   onSelectedLanguage,
   setEditorMounted,
   userCount,
+  stopwatchState,
 }: CodeEditorProps) => {
   const [currentLanguage, setCurrentLanguage] = useState("python");
   const { theme } = useTheme();
@@ -38,6 +42,11 @@ const CodeEditor = ({
   ) {
     editorRef.current = editor;
     monacoInstance.editor.setTheme(getResolvedTheme());
+    // Cmd/Ctrl+Enter runs the code without leaving the editor
+    editor.addCommand(
+      monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.Enter,
+      () => window.dispatchEvent(new CustomEvent("run-code"))
+    );
     setEditorMounted(true);
   }
 
@@ -54,12 +63,13 @@ const CodeEditor = ({
       }`}
     >
       <div
-        className={`px-3 py-2 flex justify-between items-center shrink-0 ${
+        className={`px-3 py-1.5 flex justify-between items-center shrink-0 ${
           theme === "dark" ? "bg-[#1e1e1e]" : "bg-white"
         }`}
       >
         <LanguageSelector onSelect={handleSelectLanguage} />
         <div className="flex items-center gap-2">
+          <Stopwatch state={stopwatchState} />
           <UserCount count={userCount} />
         </div>
       </div>
@@ -71,11 +81,22 @@ const CodeEditor = ({
           language={currentLanguage}
           onMount={handleEditorDidMount}
           theme={getResolvedTheme()}
+          loading={
+            <div
+              className={`h-full w-full ${
+                theme === "dark" ? "bg-[#1e1e1e]" : "bg-white"
+              }`}
+            />
+          }
           options={{
             minimap: { enabled: false },
             wordWrap: "on",
             renderLineHighlight: "line",
             scrollBeyondLastLine: false,
+            smoothScrolling: true,
+            cursorBlinking: "smooth",
+            padding: { top: 12 },
+            fontSize: 14,
           }}
         />
       </div>

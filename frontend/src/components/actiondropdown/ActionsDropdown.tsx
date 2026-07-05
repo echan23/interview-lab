@@ -14,6 +14,7 @@ import { Sparkles, Wand2 } from "lucide-react";
 import { useState } from "react";
 import * as monaco from "monaco-editor";
 import { useTheme } from "@/components/ThemeProvider";
+import RailTooltip from "../RailTooltip";
 
 const PYTHON_API_URL = import.meta.env.VITE_PYTHON_URL;
 
@@ -64,7 +65,7 @@ export default function ActionsDropdown({ editorRef, popoverSide = "right", comp
       console.error(error);
       alert("Error connecting to server");
     } finally {
-      setTimeout(() => setIsGenerating(false), 2000);
+      setIsGenerating(false);
       setOpen(false);
     }
   }
@@ -91,19 +92,19 @@ export default function ActionsDropdown({ editorRef, popoverSide = "right", comp
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div className={wrapperClassName ?? ""}>
-          <div
-            className={`${compact ? "h-7 w-7" : "h-10 w-10"} flex items-center justify-center ${
+          <Sparkles
+            className={`${compact ? "h-4 w-4" : "h-5 w-5"} transition-colors duration-100 ${
               theme === "dark"
-                ? "text-purple-300"
-                : `${open ? "text-purple-500" : "text-[#6e7681] group-hover:text-purple-500"}`
+                ? open
+                  ? "text-purple-400"
+                  : "text-[#b3b3b3] group-hover:text-purple-400"
+                : open
+                ? "text-purple-500"
+                : "text-[#6b7280] group-hover:text-purple-500"
             }`}
-          >
-            <Sparkles className={`${compact ? "h-4 w-4" : "h-6 w-6"} transition-all duration-150`} />
-          </div>
-          {label && (
-            <span className={`text-[9px] font-medium leading-none mt-0.5 ${
-              theme === "dark" ? "text-[#ccc]" : "text-[#aaa]"
-            }`}>{label}</span>
+          />
+          {label && !open && (
+            <RailTooltip label={label} side={popoverSide} theme={theme} />
           )}
         </div>
       </PopoverTrigger>
@@ -126,11 +127,7 @@ export default function ActionsDropdown({ editorRef, popoverSide = "right", comp
 
               <Button
                 variant="default"
-                className={`w-full h-9 text-sm font-medium rounded-md transition-colors flex items-center justify-center ${
-                  theme === "dark"
-                    ? "bg-[#2d2d30] hover:bg-[#094771] text-[#cccccc] border border-[#3c3c3c] hover:shadow-md hover:shadow-[#007acc]/20"
-                    : "bg-[#f3f3f3] hover:bg-[#e8f4fd] text-[#383a42] border border-[#e5e5e5] hover:shadow-sm hover:shadow-[#007acc]/10"
-                }`}
+                className="w-full h-9 text-sm font-medium rounded-md flex items-center justify-center text-white bg-[#007acc] hover:bg-[#0062a3] transition-colors duration-100 active:scale-[0.98]"
                 onClick={handleGenerate}
                 disabled={isGenerating}
               >

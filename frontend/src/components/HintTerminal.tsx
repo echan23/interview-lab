@@ -2,6 +2,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { X, ChevronRight, ChevronDown } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
+import RailTooltip from "./RailTooltip";
 import { useEffect, useRef, useState } from "react";
 
 export type Hint = {
@@ -96,14 +97,15 @@ export default function HintTerminal({ hints, onClose }: HintTerminalProps) {
           size="icon"
           variant="ghost"
           onClick={onClose}
-          className={`h-6 w-6 rounded-sm transition-colors ${
+          aria-label="Close hints"
+          className={`relative group h-6 w-6 rounded-sm transition-colors duration-100 ${
             theme === "dark"
               ? "text-[#858585] hover:text-[#cccccc] hover:bg-[#2d2d30]"
               : "text-[#6e7681] hover:text-[#24292f] hover:bg-[#e5e5e5]"
           }`}
-          title="Close hints"
         >
           <X className="h-3.5 w-3.5" />
+          <RailTooltip label="Close" side="bottom" theme={theme} />
         </Button>
       </div>
       <ScrollArea

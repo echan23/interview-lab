@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"interviewlab-backend/internal/config"
 	"interviewlab-backend/internal/postgres"
-	"interviewlab-backend/internal/redis"
 	"interviewlab-backend/internal/websocket"
 	"io"
 	"log"
@@ -32,11 +31,10 @@ func main() {
 
 	/*ROOMS LOGIC*/
 
-	websocket.MainManager = websocket.NewManager()
-	config.Init() //Sets the serverID
-	postgres.Init() //starts postgres connection
+	config.Init()
+	postgres.Init()
 	defer postgres.DB.Close()
-	redis.InitRedisClient()
+	websocket.MainManager = websocket.NewManager()
 
 	//Have a post method that handles creation of new Room
 	r.POST("/api/room/create", func(c *gin.Context){
@@ -47,7 +45,7 @@ func main() {
 	//Handles accessing an existing room
 	r.GET("/ws/:roomID", func(c *gin.Context){
 		roomID := c.Param("roomID")
-		exists, err := redis.ClientExists(c.Request.Context(), roomID)
+		exists, err := websocket.MainManager.RoomExists(c.Request.Context(), roomID)
 		if err != nil{
 			if err == postgres.ErrRoomNotFound{
 				c.JSON(404, gin.H{"error": "Room does not exist"})
@@ -65,7 +63,7 @@ func main() {
 	})
 
 	r.GET("/api/roomsAllTime", func(c *gin.Context){
-		count := redis.GetRoomsCreated(c.Request.Context())
+		count := websocket.MainManager.GetRoomsCreated(c.Request.Context())
 		c.JSON(200, gin.H{"type": "roomsAlltime", "value": count})
 	})
 
@@ -121,7 +119,7 @@ func main() {
 
 
 	r.GET("/healthz", func(c *gin.Context) {
-		if err := redis.Client.Ping(c.Request.Context()).Err(); err != nil {
+		if err := websocket.MainManager.PingRedis(c.Request.Context()); err != nil {
 			c.JSON(500, gin.H{"status": "redis error", "error": err.Error()})
 			return
 		}

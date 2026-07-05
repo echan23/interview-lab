@@ -40,19 +40,18 @@ const CreateRoomButton = () => {
           group relative
           flex items-center justify-center gap-3
           h-14 px-8
-          bg-white text-black
+          text-white
           font-display font-semibold text-base
           rounded-full
           border-0
-          shadow-[0_0_0_1px_rgba(255,255,255,0.1),0_2px_8px_rgba(0,0,0,0.2)]
-          transition-all duration-300 ease-out
-          hover:bg-white hover:shadow-[0_0_0_1px_rgba(255,255,255,0.2),0_8px_32px_rgba(255,255,255,0.1)]
+          bg-neutral-900 hover:bg-neutral-800
+          transition-all duration-200 ease-out
           hover:scale-[1.02]
           active:scale-[0.98]
           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
         "
       >
-        <span>{loading ? "Creating..." : "Create Lab"}</span>
+        <span>{loading ? "Creating..." : "Start Practicing"}</span>
         <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />
       </Button>
 
@@ -65,7 +64,7 @@ const CreateRoomButton = () => {
             transform: captchaVisible ? "translateY(0)" : "translateY(-8px)",
           }}
         >
-          <ReCAPTCHA sitekey={siteKey} onChange={handleCaptchaChange} theme="dark" />
+          <ReCAPTCHA sitekey={siteKey} onChange={handleCaptchaChange} theme="light" />
         </div>
       </div>
     </div>

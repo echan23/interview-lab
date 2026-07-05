@@ -11,6 +11,7 @@ import { Lightbulb } from "lucide-react";
 import { useState } from "react";
 import * as monaco from "monaco-editor";
 import { useTheme } from "@/components/ThemeProvider";
+import RailTooltip from "./RailTooltip";
 import type { Hint } from "./HintTerminal";
 
 const API_URL = import.meta.env.VITE_DOMAIN_NAME;
@@ -22,27 +23,34 @@ type HintButtonProps = {
   onHintReceived: (hint: Hint) => void;
   wrapperClassName?: string;
   label?: string;
+  questionRef?: React.MutableRefObject<string>;
 };
 
-export default function HintButton({ editorRef, popoverSide = "right", compact = false, onHintReceived, wrapperClassName, label }: HintButtonProps) {
+export default function HintButton({ editorRef, popoverSide = "right", compact = false, onHintReceived, wrapperClassName, label, questionRef }: HintButtonProps) {
   const [open, setOpen] = React.useState(false);
   const [isHinting, setIsHinting] = useState(false);
   const { theme } = useTheme();
 
   async function handleHintClick(hintType: "weak" | "strong") {
     const code = editorRef.current?.getValue() || "";
+    const question = questionRef?.current.trim() ?? "";
 
-    if (!code.trim()) {
-      alert("Please enter some code first.");
+    if (!code.trim() && !question) {
+      alert("Please enter some code or paste a question first.");
       return;
     }
+
+    // Prepend the pasted question so hints understand the problem being solved
+    const context = question
+      ? `Problem statement (provided by the user):\n${question}\n\n---\n\nCurrent code:\n${code}`
+      : code;
 
     setIsHinting(true);
     try {
       const res = await fetch(`${API_URL}/api/hint`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, hintType }),
+        body: JSON.stringify({ code: context, hintType }),
       });
 
       const data = await res.json();
@@ -58,7 +66,7 @@ export default function HintButton({ editorRef, popoverSide = "right", compact =
       console.error("Hint request failed:", error);
       alert("Error connecting to the server.");
     } finally {
-      setTimeout(() => setIsHinting(false), 2000);
+      setIsHinting(false);
       setOpen(false);
     }
   }
@@ -66,23 +74,20 @@ export default function HintButton({ editorRef, popoverSide = "right", compact =
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div
-          className={wrapperClassName ?? ""}
-          title="Get hints"
-        >
-          <div
-            className={`${compact ? "h-7 w-7" : "h-10 w-10"} flex items-center justify-center ${
+        <div className={wrapperClassName ?? ""}>
+          <Lightbulb
+            className={`${compact ? "h-4 w-4" : "h-5 w-5"} transition-colors duration-100 ${
               theme === "dark"
-                ? "text-amber-400"
-                : `${open ? "text-amber-500" : "text-[#616774] group-hover:text-amber-500"}`
+                ? open
+                  ? "text-amber-400"
+                  : "text-[#b3b3b3] group-hover:text-amber-400"
+                : open
+                ? "text-amber-500"
+                : "text-[#6b7280] group-hover:text-amber-500"
             }`}
-          >
-            <Lightbulb className={`${compact ? "h-4 w-4" : "h-6 w-6"} transition-all duration-150`} />
-          </div>
-          {label && (
-            <span className={`text-[9px] font-medium leading-none mt-0.5 ${
-              theme === "dark" ? "text-[#ccc]" : "text-[#aaa]"
-            }`}>{label}</span>
+          />
+          {label && !open && (
+            <RailTooltip label={label} side={popoverSide} theme={theme} />
           )}
         </div>
       </PopoverTrigger>

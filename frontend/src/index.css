@@ -116,7 +116,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: "General Sans", system-ui, sans-serif;
+    font-family: "Inter", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -124,11 +124,27 @@
 
 /* Homepage specific styles */
 .font-display {
-  font-family: "Satoshi", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
+  letter-spacing: -0.02em;
 }
 
 .font-body {
-  font-family: "General Sans", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* Landing page: subtle entrance animation */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rise-in {
+  opacity: 0;
+  animation: rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in { animation: none; opacity: 1; }
 }
 
 .monaco-editor .decorationsOverviewRuler {
