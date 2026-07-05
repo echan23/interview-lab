@@ -12,15 +12,21 @@ services:
       - "8080:8080"
     env_file:
       - ./go-backend/.env
+    environment:
+      # Piston is only reachable on the internal Docker network
+      - PISTON_URL=http://piston:2000/api/v2
+    depends_on:
+      - piston
 
-  # Piston Code Execution API
+  # Piston Code Execution API — loopback-only so a host-run backend (air)
+  # can reach it during local dev, but it is never exposed publicly
   piston:
     image: ghcr.io/engineer-man/piston
     container_name: piston_api
     restart: always
     privileged: true
     ports:
-      - "2000:2000"
+      - "127.0.0.1:2000:2000"
     volumes:
       - piston-packages:/piston/packages
     tmpfs:

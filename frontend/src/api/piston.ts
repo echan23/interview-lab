@@ -2,7 +2,7 @@ import axios from "axios";
 import LANGUAGE_VERSIONS from "../data/LANGUAGE_VERSIONS.json";
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_PISTON_URL
+  baseURL: `${import.meta.env.VITE_DOMAIN_NAME}/api`
 });
 
 /*

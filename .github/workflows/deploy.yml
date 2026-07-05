@@ -29,9 +29,9 @@ jobs:
             # Copy .env from safe backup location
             cp ~/env-backup/.env ~/interviewlab/go-backend/.env
 
-            # Build and deploy only the go-backend
-            cd go-backend
-            docker build -t interviewlab-go-backend .
+            # Remove the pre-compose container so its name doesn't conflict
             docker stop interviewlab || true
             docker rm interviewlab || true
-            docker run -d --name interviewlab --restart always --env-file .env -p 8080:8080 interviewlab-go-backend
+
+            # Build and deploy the full stack (go-backend + piston)
+            docker compose up -d --build
