@@ -26,19 +26,15 @@ jobs:
             cd ~/interviewlab
             git pull origin main
 
-            # Copy .env from safe backup location
-            cp ~/env-backup/.env ~/interviewlab/go-backend/.env
+            # Copy .env from safe backup location (warn if the backup is gone)
+            cp ~/env-backup/.env ~/interviewlab/go-backend/.env || echo "WARNING: ~/env-backup/.env missing, deploying with existing go-backend/.env"
 
-            # Install the docker compose plugin if neither v2 nor v1 is present
-            if ! docker compose version >/dev/null 2>&1 && ! command -v docker-compose >/dev/null 2>&1; then
+            # Pin a compose version whose build works without a newer buildx plugin
+            COMPOSE_VERSION=v2.27.1
+            if [ "$(docker compose version --short 2>/dev/null)" != "${COMPOSE_VERSION#v}" ]; then
               sudo mkdir -p /usr/local/lib/docker/cli-plugins
-              sudo curl -fsSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m)" -o /usr/local/lib/docker/cli-plugins/docker-compose
+              sudo curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-$(uname -m)" -o /usr/local/lib/docker/cli-plugins/docker-compose
               sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-            fi
-            if docker compose version >/dev/null 2>&1; then
-              COMPOSE="docker compose"
-            else
-              COMPOSE="docker-compose"
             fi
 
             # Remove the pre-compose container so its name doesn't conflict
@@ -46,4 +42,4 @@ jobs:
             docker rm interviewlab || true
 
             # Build and deploy the full stack (go-backend + piston)
-            $COMPOSE up -d --build
+            docker compose up -d --build
