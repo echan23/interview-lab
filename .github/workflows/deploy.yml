@@ -29,9 +29,21 @@ jobs:
             # Copy .env from safe backup location
             cp ~/env-backup/.env ~/interviewlab/go-backend/.env
 
+            # Install the docker compose plugin if neither v2 nor v1 is present
+            if ! docker compose version >/dev/null 2>&1 && ! command -v docker-compose >/dev/null 2>&1; then
+              sudo mkdir -p /usr/local/lib/docker/cli-plugins
+              sudo curl -fsSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m)" -o /usr/local/lib/docker/cli-plugins/docker-compose
+              sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+            fi
+            if docker compose version >/dev/null 2>&1; then
+              COMPOSE="docker compose"
+            else
+              COMPOSE="docker-compose"
+            fi
+
             # Remove the pre-compose container so its name doesn't conflict
             docker stop interviewlab || true
             docker rm interviewlab || true
 
             # Build and deploy the full stack (go-backend + piston)
-            docker compose up -d --build
+            $COMPOSE up -d --build
