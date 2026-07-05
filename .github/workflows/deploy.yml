@@ -37,9 +37,9 @@ jobs:
               sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
             fi
 
-            # Remove the pre-compose container so its name doesn't conflict
-            docker stop interviewlab || true
-            docker rm interviewlab || true
+            # Remove pre-compose containers so their names don't conflict
+            docker stop interviewlab piston_api || true
+            docker rm interviewlab piston_api || true
 
             # Build and deploy the full stack (go-backend + piston)
             docker compose up -d --build
