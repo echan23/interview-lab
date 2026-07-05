@@ -22,7 +22,7 @@ import { useNavigate } from "react-router-dom";
 import { Sparkles, LogOut, Lightbulb, Sun, ChevronLeft, ChevronUp, ClipboardList } from "lucide-react";
 import QuestionPanel from "../components/QuestionPanel.tsx";
 
-const STORAGE_KEY = "sidebar-position";
+const STORAGE_KEY = "sidebar-position-v2";
 const LAYOUT_STORAGE_KEY = "panel-layout";
 
 type PanelLayout = "horizontal" | "vertical";

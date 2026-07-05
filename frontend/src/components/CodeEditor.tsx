@@ -8,6 +8,7 @@ import UserCount from "./UserCount";
 import Stopwatch from "./Stopwatch";
 import { useTheme } from "@/components/ThemeProvider";
 import type { StopwatchState } from "../api/websocket";
+import CODE_TEMPLATES from "../data/CODE_TEMPLATES";
 
 type CodeEditorProps = {
   editorRef: React.MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>;
@@ -27,9 +28,35 @@ const CodeEditor = ({
   const [currentLanguage, setCurrentLanguage] = useState("python");
   const { theme } = useTheme();
 
+  // True when the editor holds nothing the user would miss: empty or an untouched template
+  const isBoilerplate = (content: string) =>
+    content.trim() === "" ||
+    Object.values(CODE_TEMPLATES).some((t) => t.trim() === content.trim());
+
+  /*
+  Insert the language's starter template so compiled languages (go/java/c/cpp)
+  run without the user having to type package/main boilerplate. Uses
+  executeEdits so the change syncs to collaborators like any other edit.
+  */
+  const applyTemplate = (language: string) => {
+    const editor = editorRef.current;
+    const model = editor?.getModel();
+    if (!editor || !model) return;
+    if (!isBoilerplate(model.getValue())) return;
+    editor.executeEdits("language-template", [
+      {
+        range: model.getFullModelRange(),
+        text: CODE_TEMPLATES[language] ?? "",
+        forceMoveMarkers: true,
+      },
+    ]);
+    editor.pushUndoStop();
+  };
+
   const handleSelectLanguage = (language: string) => {
     setCurrentLanguage(language);
     onSelectedLanguage(language);
+    applyTemplate(language);
   };
 
   function getResolvedTheme() {
