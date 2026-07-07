@@ -30,6 +30,11 @@ type StopwatchEvent struct {
 	Origin    string `json:"origin"`
 }
 
+type QuestionEvent struct {
+	Value  string `json:"value"`
+	Origin string `json:"origin"`
+}
+
 type StopwatchState struct {
 	StartTime   int64 `json:"startTime"`
 	Running     bool  `json:"running"`

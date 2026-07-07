@@ -185,6 +185,71 @@ func (r *RedisClient) GetClientCount(ctx context.Context, roomID string) (int64,
 	return count, nil
 }
 
+// Question lives in the room hash alongside content, so it shares the room TTL
+func (r *RedisClient) SaveQuestionToRedis(parentCtx context.Context, roomID string, question string) error {
+	ctx, cancel := context.WithTimeout(parentCtx, 1*time.Second)
+	defer cancel()
+	if err := r.client.HSet(ctx, roomID, "question", question).Err(); err != nil {
+		return fmt.Errorf("error saving question to redis for room %s: %w", roomID, err)
+	}
+	return nil
+}
+
+func (r *RedisClient) GetQuestionFromRedis(parentCtx context.Context, roomID string) (string, error) {
+	ctx, cancel := context.WithTimeout(parentCtx, 1*time.Second)
+	defer cancel()
+	question, err := r.client.HGet(ctx, roomID, "question").Result()
+	if err == redis.Nil {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("error getting question from redis for room %s: %w", roomID, err)
+	}
+	return question, nil
+}
+
+func questionChannel(roomID string) string {
+	return fmt.Sprintf("room:%s:question", roomID)
+}
+
+func (r *RedisClient) PublishQuestion(ctx context.Context, roomID string, value string) error {
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
+	defer cancel()
+	payload, err := json.Marshal(types.QuestionEvent{Value: value, Origin: config.ServerID})
+	if err != nil {
+		return fmt.Errorf("failed to marshal question event: %w", err)
+	}
+	if err := r.client.Publish(ctx, questionChannel(roomID), payload).Err(); err != nil {
+		return fmt.Errorf("failed to publish question event to redis: %w", err)
+	}
+	return nil
+}
+
+func (r *RedisClient) SubscribeRedisQuestion(ctx context.Context, roomID string, handleQuestionEvent func(types.QuestionEvent) error) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	pubsub := r.client.Subscribe(ctx, questionChannel(roomID))
+	channel := pubsub.Channel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case msg := <-channel:
+			var payload types.QuestionEvent
+			if err := json.Unmarshal([]byte(msg.Payload), &payload); err != nil {
+				log.Println("error unmarshaling question event from redis:", err)
+				continue
+			}
+			if err := handleQuestionEvent(payload); err != nil {
+				log.Println("error handling question event:", err)
+				continue
+			}
+		}
+	}
+}
+
 func stopwatchKey(roomID string) string {
 	return fmt.Sprintf("%s:stopwatch", roomID)
 }

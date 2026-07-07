@@ -17,6 +17,7 @@ const connect = (
   onReceiveInit: (update: Init) => void, //Callback that initializes local editor with codefile content when joining
   setUserCount: (count: number) => void,
   onStopwatchUpdate: (state: StopwatchState) => void,
+  onQuestionUpdate: (value: string, isInit: boolean) => void, //Callback that syncs the question board from other clients
   navigate: ReturnType<typeof useNavigate>
 ) => {
   socket = new WebSocket(`${domainName}/ws/${roomID}`);
@@ -39,6 +40,10 @@ const connect = (
         elapsedTime: raw.elapsedTime,
         running: raw.running,
       });
+    } else if (raw.type === "questionUpdate") {
+      onQuestionUpdate(raw.value, false);
+    } else if (raw.type === "questionInit") {
+      onQuestionUpdate(raw.value, true);
     } else {
       onReceiveUpdate(raw);
     }
@@ -81,6 +86,12 @@ const sendStopwatchEvent = (eventType: "start" | "stop" | "reset") => {
   }
 };
 
+const sendQuestionUpdate = (value: string) => {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: "question", value }));
+  }
+};
+
 const disconnect = () => {
   if (socket) {
     socket.close();
@@ -88,4 +99,4 @@ const disconnect = () => {
 };
 
 export default connect;
-export { sendUpdate, disconnect, sendStopwatchEvent };
+export { sendUpdate, disconnect, sendStopwatchEvent, sendQuestionUpdate };

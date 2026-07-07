@@ -2,17 +2,15 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 import RailTooltip from "./RailTooltip";
-import { useState } from "react";
 
 type QuestionPanelProps = {
-  initialValue: string;
+  value: string;
   onChange: (value: string) => void;
   onClose: () => void;
 };
 
-export default function QuestionPanel({ initialValue, onChange, onClose }: QuestionPanelProps) {
+export default function QuestionPanel({ value, onChange, onClose }: QuestionPanelProps) {
   const { theme } = useTheme();
-  const [value, setValue] = useState(initialValue);
 
   return (
     <div className="flex h-full flex-col">
@@ -45,10 +43,7 @@ export default function QuestionPanel({ initialValue, onChange, onClose }: Quest
       </div>
       <textarea
         value={value}
-        onChange={(e) => {
-          setValue(e.target.value);
-          onChange(e.target.value);
-        }}
+        onChange={(e) => onChange(e.target.value)}
         placeholder="Paste the interview question here."
         spellCheck={false}
         className={`flex-1 min-h-0 w-full resize-none px-4 py-2 text-sm leading-relaxed bg-transparent outline-none select-text ${

@@ -66,9 +66,13 @@ func (c *Client) readPump() {
 				Type      string `json:"type"`
 				EventType string `json:"eventType"`
 				EventTime int64  `json:"eventTime"`
+				Value     string `json:"value"`
 			}
 			if err := json.Unmarshal(payload, &event); err == nil && event.Type == "stopwatch" {
 				c.room.stopwatchCh <- types.StopwatchEvent{EventType: event.EventType, EventTime: event.EventTime}
+				continue
+			} else if err == nil && event.Type == "question" {
+				c.room.questionCh <- questionBroadcast{sender: c.id, value: event.Value}
 				continue
 			}
 			log.Println("Unrecognized control message:", string(payload))

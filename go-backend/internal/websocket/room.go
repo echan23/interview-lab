@@ -36,11 +36,25 @@ type Room struct {
 	redisClient       *redis.RedisClient
 	stopwatch         *stopwatch.Stopwatch
 	stopwatchCh       chan types.StopwatchEvent
+	question          string
+	questionCh        chan questionBroadcast
+}
+
+// questionBroadcast carries a client's question edit with its sender so the
+// sender doesn't receive its own update back (same reason as types.Broadcast)
+type questionBroadcast struct {
+	sender string
+	value  string
 }
 
 type UserCountUpdate struct {
 	MessageType string `json:"type"`
 	Count       int64  `json:"count"`
+}
+
+type QuestionUpdate struct {
+	MessageType string `json:"type"`
+	Value       string `json:"value"`
 }
 
 type StopwatchUpdate struct {
@@ -141,6 +155,7 @@ func NewRoom(roomID string, client *redis.RedisClient) *Room {
 		redisClient: client,
 		stopwatch:   stopwatch.New(ctx, roomID, client),
 		stopwatchCh: make(chan types.StopwatchEvent),
+		questionCh:  make(chan questionBroadcast),
 	}
 }
 
@@ -229,6 +244,7 @@ func (r *Room) Run(roomID string) {
 	log.Println("Room.Run started")
 	go r.redisClient.SubscribeDiffs(r.Ctx, r.Id, r.handleIncomingDiff)
 	go r.redisClient.SubscribeRedisStopwatch(r.Ctx, r.Id, r.handleRemoteStopwatchEvent)
+	go r.redisClient.SubscribeRedisQuestion(r.Ctx, r.Id, r.handleRemoteQuestionEvent)
 	go r.startPublishBatcher()
 	go r.startHashWriteRoutine()
 	go r.startDBWriteRoutine()
@@ -243,6 +259,7 @@ func (r *Room) Run(roomID string) {
 			r.AddClientToRedis(client.id)
 			r.BroadcastUserCountUpdate()
 			r.sendStopwatchState(client)
+			r.sendQuestionInit(client)
 		case client := <-r.unregister:
 			r.removeClient(client)
 			fmt.Println("Client disconnected", client.id)
@@ -262,6 +279,15 @@ func (r *Room) Run(roomID string) {
 				log.Println("error handling stopwatch event:", err)
 			}
 			r.BroadcastStopwatchState()
+		case q := <-r.questionCh:
+			r.setQuestion(q.value)
+			if err := r.redisClient.SaveQuestionToRedis(r.Ctx, r.Id, q.value); err != nil {
+				log.Println("error saving question to redis:", err)
+			}
+			if err := r.redisClient.PublishQuestion(r.Ctx, r.Id, q.value); err != nil {
+				log.Println("error publishing question to redis:", err)
+			}
+			r.broadcastQuestion(q.value, q.sender)
 		}
 	}
 }
@@ -276,6 +302,51 @@ func (r *Room) handleRemoteStopwatchEvent(event types.StopwatchEvent) error {
 	}
 	r.BroadcastStopwatchState()
 	return nil
+}
+
+func (r *Room) setQuestion(value string) {
+	r.Lock()
+	defer r.Unlock()
+	r.question = value
+}
+
+func (r *Room) getQuestion() string {
+	r.RLock()
+	defer r.RUnlock()
+	return r.question
+}
+
+// handleRemoteQuestionEvent applies question updates published by other servers
+func (r *Room) handleRemoteQuestionEvent(event types.QuestionEvent) error {
+	if event.Origin == config.ServerID {
+		return nil // already applied and broadcast locally
+	}
+	r.setQuestion(event.Value)
+	r.broadcastQuestion(event.Value, "")
+	return nil
+}
+
+// sendQuestionInit hands the current question to a joining client; the client
+// decides whether to adopt it or upload its locally persisted copy instead
+func (r *Room) sendQuestionInit(client *Client) {
+	msg := &QuestionUpdate{MessageType: "questionInit", Value: r.getQuestion()}
+	if err := client.conn.WriteJSON(msg); err != nil {
+		log.Printf("error sending question init for room %s, client %s: %v\n", r.Id, client.id, err)
+	}
+}
+
+func (r *Room) broadcastQuestion(value string, excludeID string) {
+	r.RLock()
+	defer r.RUnlock()
+	update := &QuestionUpdate{MessageType: "questionUpdate", Value: value}
+	for client := range r.clients {
+		if client.id == excludeID {
+			continue
+		}
+		if err := client.conn.WriteJSON(update); err != nil {
+			log.Printf("error sending question update for room %s, client %s: %v\n", r.Id, client.id, err)
+		}
+	}
 }
 
 func (r *Room) stopwatchUpdateMessage() *StopwatchUpdate {

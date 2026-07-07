@@ -13,7 +13,7 @@ import {
   handleEditorUpdateEvent,
   updateEditorContentEvent,
 } from "../api/events.ts";
-import connect, { disconnect } from "../api/websocket.ts";
+import connect, { disconnect, sendQuestionUpdate } from "../api/websocket.ts";
 import type { StopwatchState } from "../api/websocket.ts";
 import type { Edit, Init } from "../data/types.ts";
 import { useParams } from "react-router-dom";
@@ -79,17 +79,51 @@ const RoomContent = () => {
     running: false,
   });
 
-  // Pasted problem statement — read by HintButton at request time, persisted per room
+  // Pasted problem statement — read by HintButton at request time, persisted per room,
+  // synced to the other clients in the room over the websocket
   const questionStorageKey = `question-${roomID}`;
   const questionRef = useRef<string>(localStorage.getItem(questionStorageKey) ?? "");
+  const [question, setQuestion] = useState(() => questionRef.current);
   const [isQuestionPanelVisible, setIsQuestionPanelVisible] = useState(
     () => questionRef.current.trim().length > 0
   );
 
+  // Local edits: update immediately, debounce the websocket send so typing
+  // doesn't ship the full text on every keystroke (a paste sends once)
+  const questionSendTimer = useRef<number | null>(null);
   const handleQuestionChange = useCallback(
     (value: string) => {
       questionRef.current = value;
       localStorage.setItem(questionStorageKey, value);
+      setQuestion(value);
+      if (questionSendTimer.current !== null) {
+        window.clearTimeout(questionSendTimer.current);
+      }
+      questionSendTimer.current = window.setTimeout(() => {
+        questionSendTimer.current = null;
+        sendQuestionUpdate(questionRef.current);
+      }, 250);
+    },
+    [questionStorageKey]
+  );
+
+  // Remote updates: the server excludes the sender, so anything arriving here
+  // came from another client (or is the room state sent on join)
+  const handleQuestionSync = useCallback(
+    (value: string, isInit: boolean) => {
+      if (isInit && value === "") {
+        // Room has no question yet (e.g. expired from redis) — restore ours if we have one
+        if (questionRef.current.trim().length > 0) {
+          sendQuestionUpdate(questionRef.current);
+        }
+        return;
+      }
+      questionRef.current = value;
+      localStorage.setItem(questionStorageKey, value);
+      setQuestion(value);
+      if (value.trim().length > 0) {
+        setIsQuestionPanelVisible(true);
+      }
     },
     [questionStorageKey]
   );
@@ -231,6 +265,7 @@ const RoomContent = () => {
       handleReceiveEditorInit,
       setUserCount,
       setStopwatchState,
+      handleQuestionSync,
       navigate
     );
     socketRef.current = socket;
@@ -319,7 +354,7 @@ const RoomContent = () => {
         >
           <div style={{ width: questionWidth }} className="h-full">
             <QuestionPanel
-              initialValue={questionRef.current}
+              value={question}
               onChange={handleQuestionChange}
               onClose={() => setIsQuestionPanelVisible(false)}
             />

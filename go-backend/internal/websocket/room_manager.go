@@ -46,6 +46,11 @@ func (m *Manager) GetOrCreateRoom(c *gin.Context, roomID string) *Room {
 		content = ""
 	}
 	newRoom.content = content
+	if question, qErr := m.redisClient.GetQuestionFromRedis(c.Request.Context(), roomID); qErr == nil {
+		newRoom.question = question
+	} else {
+		log.Println("failed to load question from redis:", qErr)
+	}
 	go newRoom.Run(roomID)
 
 	m.Lock()
