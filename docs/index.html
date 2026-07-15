@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InterviewLab — System Architecture</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #fff; color: #000; }
+  .slide {
+    display: none;
+    height: 100vh;
+    padding: 5vh 8vw;
+    box-sizing: border-box;
+    flex-direction: column;
+    overflow: auto;
+  }
+  .slide.active { display: flex; }
+  h1 { font-size: 2em; margin: 0 0 0.6em; border-bottom: 1px solid #000; padding-bottom: 0.3em; }
+  h2 { font-size: 1.25em; margin: 0.8em 0 0.3em; }
+  p, li { font-size: 1.1em; line-height: 1.5; }
+  li { margin: 0.3em 0; }
+  table { border-collapse: collapse; margin: 0.8em 0; }
+  th, td { border: 1px solid #000; padding: 0.35em 0.8em; text-align: left; }
+  pre { font-size: 0.95em; line-height: 1.3; overflow-x: auto; }
+  code { background: #eee; padding: 0 3px; }
+  .pagenum { position: fixed; bottom: 10px; right: 18px; color: #555; font-size: 0.9em; }
+  .cols { display: flex; gap: 4vw; }
+  .cols > div { flex: 1; min-width: 0; }
+</style>
+</head>
+<body>
+
+<!-- 1. ABOUT ME -->
+<section class="slide active">
+  <h1>About Me — Edward Chan</h1>
+  <p>Student at University of Maryland, College Park</p>
+  <ul>
+    <li>Focus on backend and distributed systems</li>
+    <li>Work across the stack: Go, Python, TypeScript/React, SQL</li>
+    <li>Comfortable owning infrastructure: Docker, AWS (EC2, Lambda), CI/CD with GitHub Actions</li>
+    <li>Chose InterviewLab for this talk because I owned it end to end — design, build, deploy, and operations —
+        and it contains the hardest technical problem I've worked on: keeping multiple browsers editing one
+        document in sync across servers</li>
+  </ul>
+  <p style="color:#555">(Arrow keys or space to navigate. F for fullscreen.)</p>
+</section>
+
+<!-- 2. THE PROJECT -->
+<section class="slide">
+  <h1>The Project: InterviewLab</h1>
+  <p>A <b>shared in-browser code editor</b> for running mock coding interviews.
+     Live at interviewlab.dev — create a room, send the link, start coding.</p>
+  <h2>Features</h2>
+  <ul>
+    <li><b>Real-time edits</b> — everyone in a room sees keystrokes as they happen</li>
+    <li><b>Sharing via URL</b> — no accounts, no setup</li>
+    <li><b>In-browser code execution</b> — Python, Java, C++, JavaScript, Go</li>
+    <li><b>AI-generated feedback</b> — hints on your code, generated questions</li>
+    <li><b>Cross-node writes on a document</b> — two users on different servers still edit the same document consistently</li>
+  </ul>
+  <h2>Why</h2>
+  <p>Existing tools were either laggy (Codefile.io) or paid (CoderPad). I wanted a free tool that felt instant.</p>
+</section>
+
+<!-- 3. GOAL -->
+<section class="slide">
+  <h1>Goal</h1>
+  <p>Three hard requirements drove the whole design:</p>
+  <ol>
+    <li><b>Editing must feel local.</b> Remote keystrokes should render fast enough that two people
+        can talk and type over each other naturally.</li>
+    <li><b>Untrusted code must run safely.</b> The core feature is literally executing strangers'
+        code on my server.</li>
+    <li><b>State must survive scale-out.</b> A room has to work identically whether its users land
+        on the same backend instance or different ones.</li>
+  </ol>
+  <p>Everything that follows is in service of these three.</p>
+</section>
+
+<!-- 4. ARCHITECTURE -->
+<section class="slide">
+  <h1>System Architecture</h1>
+<pre>
+ +-----------+   WS diffs    +----------------------+
+ |  Browser  | ------------> |  Go backend (EC2)    |
+ |  React +  | <------------ |                      |
+ |  Monaco   |               |  Room manager        |        +-----------+
+ +-----------+               |   1 goroutine/room   | -----> |  Redis    |
+                             |                      | pubsub |  hot state|
+                             |  WebSocket hub       |        +-----------+
+                             |   read/write pumps   |
+                             |                      |        +-----------+
+                             |  HTTP proxy          | -----> | Postgres  |
+                             |   /execute /hint     |        | snapshots |
+                             +----------+-----------+        +-----------+
+                                        |
+                        +---------------+---------------+
+                        v                               v
+                 +--------------+               +----------------+
+                 |    Piston    |               |   FastAPI on   |
+                 |   sandbox    |               |   AWS Lambda   |
+                 | internal net |               | GPT hints/gen  |
+                 +--------------+               +----------------+
+</pre>
+  <ul>
+    <li>Go backend: rooms, sync, and a proxy in front of everything sensitive</li>
+    <li>Redis: cross-server relay + hot state (5-min TTL) &nbsp;·&nbsp; Postgres: durable snapshots</li>
+    <li>Piston: sandboxed code execution, never internet-facing &nbsp;·&nbsp; Lambda: AI feedback, scales to zero</li>
+  </ul>
+</section>
+
+<!-- 5. CONCURRENCY -->
+<section class="slide">
+  <h1>Concurrency: One Goroutine Owns Each Room</h1>
+<pre>
+   register/unregister --\
+   edits (broadcast) -----\        +---------------------+
+   stopwatch events -------+-----> |     Room.Run()      |
+   question edits ---------/       |  single select loop |
+   Redis subscribe -------/        |  owns room content  |
+                                   +----------+----------+
+                                              |
+                              +---------------+--------------+
+                              v                              v
+                       Redis write / 2s               DB flush / 10s
+</pre>
+  <ul>
+    <li>All mutations flow through <b>channels into one select loop</b> per room</li>
+    <li>The document string is touched by exactly one goroutine — the hot edit path needs <b>no locks</b></li>
+    <li>Durability runs on background timers, never blocking an edit</li>
+    <li>One <code>context.Cancel()</code> tears down every routine on shutdown</li>
+    <li>Trade-off: a slow consumer can stall the loop; per-client channels bound the damage</li>
+  </ul>
+</section>
+
+<!-- 6. KEYSTROKE PATH -->
+<section class="slide">
+  <h1>How One Keystroke Reaches Everyone</h1>
+<pre>
+ Client A        Room (server 1)        Redis         Room (server 2)
+    |                   |                 |                  |
+    |--- Monaco diff -->|                 |                  |
+    |   [{range,text}]  |                 |                  |
+    |                   | apply to doc    |                  |
+    |                   | (offset splice) |                  |
+    |<-- fan out to ----|                 |                  |
+    |   local peers     |                 |                  |
+    |   (not sender)    |                 |                  |
+    |                   |--- PUBLISH ---->|                  |
+    |                   |  batch: <=20    |                  |
+    |                   |  edits / 200ms  |--- envelope ---->|
+    |                   |                 |                  | drop if
+    |                   |                 |                  | Origin==self
+    |                   |                 |                  | else apply +
+    |                   |                 |                  | fan out
+</pre>
+  <p>Same-server peers get the edit in <b>one hop</b> — Redis is only on the cross-server path,
+     so typists never feel the batching.</p>
+</section>
+
+<!-- 7. STATE TIERS -->
+<section class="slide">
+  <h1>Three Tiers of State</h1>
+  <table>
+    <tr><th>Tier</th><th>Holds</th><th>Writes</th><th>Lifetime</th></tr>
+    <tr><td>Memory (Go)</td><td>Live document, authoritative</td><td>Every edit</td><td>While room runs</td></tr>
+    <tr><td>Redis</td><td>Content hash, pub/sub</td><td>Every 2 s</td><td>5-minute TTL</td></tr>
+    <tr><td>Postgres</td><td>Durable snapshot (UPSERT)</td><td>Every 10 s</td><td>Forever</td></tr>
+  </table>
+  <ul>
+    <li>Edits mutate memory instantly; durability happens on timers</li>
+    <li>Rooms empty for 5 minutes flush and shut down; Redis TTL garbage-collects the rest —
+        <b>idle cost is ~zero</b></li>
+    <li>Rejoining a dead room: Redis miss → read Postgres → rehydrate. Nothing is lost.</li>
+  </ul>
+</section>
+
+<!-- 8. SANDBOX -->
+<section class="slide">
+  <h1>Running Untrusted Code Safely</h1>
+<pre>
+ . . . . . . . . . . EC2 host — internal Docker network . . . . . . .
+ .                                                                  .
+ .   +---------------+      /execute       +------------------+    .
+ .   |  Go backend   | ------------------> |     Piston       |    .
+ .   |  :8080 public |                     |  priv. sandbox   |    .
+ .   +---------------+                     |  tmpfs /tmp      |    .
+ .                                         +--------X---------+    .
+ . . . . . . . . . . . . . . . . . . . . . . . . . .|. . . . . . . .
+                                                    X  no public port
+</pre>
+  <ul>
+    <li><b>Mistake I made first:</b> the frontend called Piston directly on a public port 2000 —
+        anyone could POST arbitrary code to the box, bypassing every app-level limit</li>
+    <li><b>Fix I owned:</b> route <code>/api/execute</code> through the Go backend; bind Piston to
+        the internal Docker network only</li>
+    <li>Defense in depth: reCAPTCHA on room creation, 100-line editor cap, rate limit on the AI tier</li>
+  </ul>
+</section>
+
+<!-- 9. SCALE-OUT -->
+<section class="slide">
+  <h1>Hardest Problem: Scaling Past One Server</h1>
+  <p><b>The wall:</b> room state lived in one server's memory. Two users behind a load balancer
+     could land on different instances — same room URL, two disconnected documents.</p>
+  <h2>Options considered</h2>
+  <table>
+    <tr><th>Option</th><th>Scales</th><th>Simple</th><th>Robust</th><th>Verdict</th></tr>
+    <tr><td>Sticky sessions</td><td>No</td><td>Yes</td><td>Dies on redeploy</td><td>Rejected</td></tr>
+    <tr><td>Full CRDT (Yjs/Automerge)</td><td>Yes</td><td>No, heavy</td><td>Yes</td><td>Rejected</td></tr>
+    <tr><td><b>Redis relay + offset edits</b></td><td>Yes</td><td>Mostly</td><td>Yes</td><td><b>Chosen</b></td></tr>
+  </table>
+  <ul>
+    <li>Each server keeps its own in-memory copy; edits relay through a per-room Redis channel</li>
+    <li>The Redis hash is the shared source of truth for joins/reconnects</li>
+    <li>CRDT rejected as overkill for 2–3 person rooms — this is what makes
+        <b>cross-node writes on one document</b> work at the right cost</li>
+  </ul>
+</section>
+
+<!-- 10. BUGS -->
+<section class="slide">
+  <h1>Two Bugs the Relay Created</h1>
+  <div class="cols">
+    <div>
+      <h2>Bug 1: Echo loop</h2>
+      <ul>
+        <li>A server publishes an edit, then its own subscriber delivers it right back —
+            every cross-server keystroke doubled</li>
+        <li><b>Fix:</b> stamp each envelope with <code>Origin = ServerID</code>; subscribers drop
+            their own messages. Same idea client-side with a sender ID.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Bug 2: Offset drift</h2>
+      <ul>
+        <li>Monaco emits multi-range diffs; applying them left-to-right shifts later offsets
+            and corrupts the document</li>
+        <li><b>Fix:</b> sort each batch by <code>RangeOffset</code> <b>descending</b> before splicing,
+            so earlier edits never move offsets not yet applied. Bounds-check every splice.</li>
+      </ul>
+    </div>
+  </div>
+  <h2>Honest limitation</h2>
+  <p>Last-writer-wins on ranges, not a CRDT. Two users editing the exact same span simultaneously
+     can conflict — acceptable at interview scale, and I know precisely where it breaks.</p>
+</section>
+
+<!-- 11. BATCHING -->
+<section class="slide">
+  <h1>Batching the Cross-Server Relay</h1>
+  <p><b>Problem:</b> publishing every keystroke to Redis = one network round trip per character.</p>
+  <p><b>Solution:</b> per-room publish batcher — flush at <b>20 edits</b> or <b>200 ms</b>,
+     whichever comes first.</p>
+<pre>
+ Redis publishes per 100 keystrokes
+
+ per-edit  |████████████████████████████████████████|  100
+ batched   |██|                                          ~6
+</pre>
+  <ul>
+    <li>Local peers still see edits instantly; only the cross-server path is batched</li>
+    <li>200 ms sits below the threshold where remote typing feels laggy</li>
+    <li>Separate cadences: 200 ms relay, 2 s Redis hash, 10 s Postgres —
+        each consistency need pays only its own cost</li>
+  </ul>
+</section>
+
+<!-- 12. AI & DEPLOY -->
+<section class="slide">
+  <h1>AI Feedback Tier and Deployment</h1>
+  <h2>AI feedback</h2>
+  <ul>
+    <li>FastAPI on AWS Lambda — scales to zero, isolated from the stateful core</li>
+    <li>Proxied through the Go backend so API keys never reach the browser</li>
+    <li>Round-robin key rotation on rate limits; global limiter caps spend</li>
+  </ul>
+  <h2>Deployment</h2>
+<pre>
+ git push main -> GitHub Actions -> SSH to EC2
+              -> docker compose up --build
+              -> install missing Piston runtimes (idempotent)
+              -> /healthz checks Redis -> live
+</pre>
+  <p>Pinned compose version and the health check were both added after real deploy failures —
+     the pipeline is shaped by production incidents.</p>
+</section>
+
+<!-- 13. RESULTS -->
+<section class="slide">
+  <h1>Results</h1>
+  <table>
+    <tr><th>Goal</th><th>Outcome</th></tr>
+    <tr><td>Responsive shared editing</td><td>Met — instant locally, ≤200 ms cross-server</td></tr>
+    <tr><td>Safe untrusted execution</td><td>Met — sandboxed, never internet-facing</td></tr>
+    <tr><td>Scale past one server</td><td>Met — any instance can serve any room</td></tr>
+    <tr><td>Free to run and use</td><td>Met — idle cost ~zero</td></tr>
+    <tr><td>Conflict handling</td><td>Partial — range LWW, not CRDT; fine at interview scale</td></tr>
+  </table>
+  <ul>
+    <li>Live and public at interviewlab.dev</li>
+    <li>Shipped beyond scope: live user count, shared stopwatch, real-time question board</li>
+  </ul>
+</section>
+
+<!-- 14. CLOSE -->
+<section class="slide">
+  <h1>Decisions I'd Defend — and Q&amp;A</h1>
+  <ul>
+    <li><b>Actor-per-room concurrency</b> — lock-free hot path, clean shutdown. Would choose again.</li>
+    <li><b>Redis relay over CRDT</b> — right-sized to the product; horizontal scale at a fraction
+        of the complexity.</li>
+    <li><b>Proxying the sandbox</b> — found and closed my own security hole; untrusted execution
+        never faces the internet.</li>
+    <li><b>What I'd do differently</b> — start with the origin-stamped relay and offset-sorted edits
+        on day one, and build the deploy pipeline first. A redo would take roughly half the time.</li>
+  </ul>
+  <h2>Questions?</h2>
+</section>
+
+<div class="pagenum" id="pagenum"></div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const pagenum = document.getElementById('pagenum');
+  let i = 0;
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, k) => s.classList.toggle('active', k === i));
+    pagenum.textContent = (i + 1) + ' / ' + slides.length;
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(i + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key === 'f' || e.key === 'F') { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }
+  });
+  document.addEventListener('click', (e) => { show(e.clientX > window.innerWidth / 2 ? i + 1 : i - 1); });
+  show(0);
+</script>
+</body>
+</html>
