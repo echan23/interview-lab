@@ -112,6 +112,48 @@ func main() {
 		c.Data(resp.StatusCode, "application/json", respBody)
 	})
 
+	// Proxy question generation requests to Python backend
+	r.POST("/api/generate", func(c *gin.Context) {
+		if aiServiceURL == "" {
+			c.JSON(500, gin.H{"error": "Python backend URL not configured"})
+			return
+		}
+
+		var body struct {
+			Difficulty string `json:"difficulty" binding:"required"`
+			Company    string `json:"company"`
+			Topic      string `json:"topic"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(400, gin.H{"error": "Invalid request body"})
+			return
+		}
+
+		payload, _ := json.Marshal(body)
+		req, err := http.NewRequestWithContext(c.Request.Context(), "POST", fmt.Sprintf("%s/generate", aiServiceURL), bytes.NewReader(payload))
+		if err != nil {
+			c.JSON(500, gin.H{"error": "Failed to create request"})
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			log.Printf("Generate proxy error: %v", err)
+			c.JSON(502, gin.H{"error": "Failed to reach generate service"})
+			return
+		}
+		defer resp.Body.Close()
+
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			c.JSON(502, gin.H{"error": "Failed to read generate response"})
+			return
+		}
+
+		c.Data(resp.StatusCode, "application/json", respBody)
+	})
+
 	pistonURL := os.Getenv("PISTON_URL")
 
 	r.POST("/api/execute", func(c *gin.Context) {

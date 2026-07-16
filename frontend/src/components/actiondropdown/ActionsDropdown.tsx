@@ -16,7 +16,7 @@ import * as monaco from "monaco-editor";
 import { useTheme } from "@/components/ThemeProvider";
 import RailTooltip from "../RailTooltip";
 
-const PYTHON_API_URL = import.meta.env.VITE_PYTHON_URL;
+const API_URL = import.meta.env.VITE_DOMAIN_NAME;
 
 type ActionsDropdownProps = {
   editorRef: React.MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>;
@@ -37,7 +37,7 @@ export default function ActionsDropdown({ editorRef, popoverSide = "right", comp
   async function handleGenerate() {
     setIsGenerating(true);
     try {
-      const res = await fetch(`${PYTHON_API_URL}/generate`, {
+      const res = await fetch(`${API_URL}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ difficulty, company, topic }),
